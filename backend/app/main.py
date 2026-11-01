@@ -17,8 +17,10 @@ from .models import User, RefreshSession, FinancialRecord, LoginAttempt
 from .schemas import Credentials, RefreshBody, SyncBody
 from .security import passwords, tokens, digest, current_user
 from . import relational
+from .updates import router as update_router
 
 app = FastAPI(title='Personal Expense Tracker', version='0.2.0')
+app.include_router(update_router)
 
 @app.middleware('http')
 async def limit_request(request: Request, call_next):

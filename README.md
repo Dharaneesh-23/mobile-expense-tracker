@@ -23,6 +23,8 @@ For USB-connected local development, run `adb reverse tcp:8000 tcp:8000` and set
 
 See [Supabase dev/QA setup](docs/SUPABASE_DEV_QA.md) for two schemas in one project and [personal APK signing](docs/SIGNING.md) for private keystore setup. Production database access stays disabled during testing.
 
+QA and prod app previews can coexist on your phone. See [private in-app updates](docs/PRIVATE_APP_UPDATES.md) for the authenticated update backend and GitHub publishing workflow. Initial builds use the existing debug key, as requested; preserve that key for future updates. Prod financial data remains offline during the dev/QA test phase.
+
 ## Branches
 
 `dev` → `QA` → `prod`. Daily development starts on `dev`; promote reviewed and tested changes through pull requests. Exact branch casing matters.
