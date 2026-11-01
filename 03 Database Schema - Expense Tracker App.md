@@ -1,6 +1,8 @@
 # Expense Tracker App — Database Schema
 
-PostgreSQL, self-installed on the Oracle VM. Every table keyed by UUID primary keys; `user_id` foreign keys enforce per-user isolation throughout.
+PostgreSQL, managed by Supabase on the free tier. Financial entities use UUID primary keys. Existing user IDs and the sync journal retain their compatible string IDs; authenticated-user filtering and ownership foreign keys enforce data isolation.
+
+Implementation status: both dev/qa now contain the relational tables below plus `records`, `refresh_sessions`, `login_attempts`, and Alembic metadata (13 tables per schema). Migration `0002` links transactions, budgets, and split shares to client IDs through `sync_record_id`; financial sync writes populate these tables atomically while retaining `records` as the revision/tombstone journal. Existing user IDs remain `varchar(36)` for compatibility; new financial entity IDs are UUIDs. See [database audit](docs/DATABASE_AUDIT.md) and [build status](docs/BUILD_STATUS.md).
 
 ## 1. `users`
 
