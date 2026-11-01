@@ -2,6 +2,8 @@
 
 PostgreSQL, managed by Supabase on the free tier. Every table keyed by UUID primary keys; `user_id` foreign keys enforce per-user isolation throughout.
 
+Implementation status: this document describes the original relational target. The current build uses `users`, `records`, `refresh_sessions`, and `login_attempts` plus Alembic metadata. See [database audit](docs/DATABASE_AUDIT.md) and `backend/sql/complete_planned_tables.sql` for the additive dev/qa table setup. Creating those tables does not by itself migrate the application's `records` data.
+
 ## 1. `users`
 
 | Column | Type | Notes |
