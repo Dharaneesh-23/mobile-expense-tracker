@@ -4,10 +4,11 @@ Nine phases, each independently testable before the next begins. No calendar dat
 
 ## Phase 0 — Environment setup
 
-- Provision the Oracle Cloud VM, run through `06_server_deployment_guide.md` end to end with a "Hello World" FastAPI route
+- Create the Supabase project and Render free web service; follow `06_server_deployment_guide.md` with a "Hello World" FastAPI route
 - Create the Android project skeleton with the package structure from `08_file_structure_and_build_manifest.md`
-- GitHub repo + Actions deploy pipeline working against the empty FastAPI app
-- **Ready when**: a change pushed to `main` auto-deploys and is reachable over HTTPS
+- GitHub repo connected to Render; auto-deploy on push working against the empty FastAPI app, without SSH or a GitHub Actions deploy job
+- Keep `dev` → `QA` → `prod` promotion; use separate `dev` and `qa` schemas/roles in one Supabase project during development; defer production provisioning until testing is complete
+- **Ready when**: a change pushed to the configured environment branch auto-deploys and is reachable over Render-managed HTTPS; cold-start behavior and a manual database backup/restore are verified
 
 ## Phase 1 — Capture, parser, dedup (on-device only)
 

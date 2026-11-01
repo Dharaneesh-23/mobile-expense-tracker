@@ -1,6 +1,6 @@
 # Expense Tracker App — Database Schema
 
-PostgreSQL, self-installed on the Oracle VM. Every table keyed by UUID primary keys; `user_id` foreign keys enforce per-user isolation throughout.
+PostgreSQL, managed by Supabase on the free tier. Every table keyed by UUID primary keys; `user_id` foreign keys enforce per-user isolation throughout.
 
 ## 1. `users`
 

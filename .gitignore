@@ -13,6 +13,11 @@ google-services.json
 *firebase-adminsdk*.json
 service-account*.json
 credentials*.json
+signing.properties
+*.p12
+*.pfx
+backend/.env.dev
+backend/.env.qa
 
 # Android / Java
 .gradle/

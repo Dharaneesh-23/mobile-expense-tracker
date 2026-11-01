@@ -6,19 +6,19 @@ Every resource below was compared against its real competitors before being lock
 
 | Option | Free tier reality | Verdict |
 | --- | --- | --- |
-| **Oracle Cloud "Always Free"** | Always-on ARM VM (4 OCPU, 24GB RAM, 200GB block storage), free forever, no sleep. Card required for identity verification only, never charged within Always Free limits. Known risk: Oracle has reclaimed instances it detects as idle/underutilized | **Chosen** — full control, genuinely always-on, no vendor BaaS dependency |
-| Render | 750 hrs/month, no card, auto-deploy from GitHub, but sleeps after \~15 min idle (30-60s cold start) | Rejected — cold starts conflict with the always-on goal of Option B |
+| Oracle Cloud "Always Free" | Card required for account verification; self-managed VM infrastructure | Rejected — card requirement prevents setup |
+| **Render** | Free web service, GitHub auto-deploy, managed HTTPS; 750 free instance hours/month shared across the workspace; sleeps after 15 minutes idle, with roughly one-minute cold starts | **Chosen** — avoids VM administration; accept sleep/cold starts and free-tier quotas |
 | Railway | Free trial credit only now; requires card for continued use | Rejected — not genuinely free anymore |
 | Fly.io | No longer offers a free tier for new signups | Rejected |
-| Google Cloud Run | Generous free quota (2M requests/month), scales to zero | Viable alternative, more Docker/gcloud setup than Oracle VM, still not always-on |
+| Google Cloud Run | Usage-based service with a free quota; scales to zero | Not chosen — more billing and deployment setup than the selected Render path |
 
 ## 2. Database
 
 | Option | Free tier | Verdict |
 | --- | --- | --- |
-| **PostgreSQL, self-installed on the Oracle VM** | Free, capped only by the VM's own 200GB block storage | **Chosen** — consistent with full-control hosting choice, no separate account/service to manage |
-| Supabase | 500MB Postgres + bundled Auth/Storage, no card | Rejected as primary — would reintroduce a managed BaaS dependency after choosing full control |
-| Neon | 0.5GB, true scale-to-zero, no card | Rejected as primary for the same reason; worth reconsidering only if the VM's Postgres ever becomes a bottleneck |
+| PostgreSQL, self-installed on the Oracle VM | Database software is free, but requires the VM and ongoing administration | Rejected — Oracle signup is blocked by the card requirement |
+| **Supabase** | 500 MB managed Postgres per free project; two active free projects; inactivity pausing after one week; no automatic backups on Free | **Chosen** — managed PostgreSQL without running a database server; use only the database, retaining FastAPI JWT auth |
+| Neon | Managed PostgreSQL with a free plan and scale-to-zero | Alternative — not selected; Supabase is the chosen managed database |
 
 ## 3. Authentication
 
@@ -26,7 +26,7 @@ Every resource below was compared against its real competitors before being lock
 | --- | --- | --- |
 | **Self-rolled JWT (FastAPI + passlib + python-jose)** | Full control, no third-party dependency, more code to get right (password hashing, refresh tokens, rate limiting) | **Chosen** — consistent with the full-control hosting decision; user has prior auth-module build experience |
 | Firebase Auth | Free up to 50k MAU, handles edge cases out of the box | Rejected — reintroduces a third-party dependency the full-control choice was meant to avoid |
-| Supabase Auth | Bundled with Supabase DB | Rejected along with Supabase as a whole |
+| Supabase Auth | Bundled with Supabase DB | Not selected — Supabase is used for PostgreSQL only; retain self-rolled JWT |
 
 ## 4. PDF report generation
 
@@ -62,7 +62,7 @@ Every resource below was compared against its real competitors before being lock
 
 ## 9. CI/CD & version control
 
-**GitHub (free) + GitHub Actions (free minutes, generous for a solo repo) → SSH deploy to the Oracle VM.** No competing option offers a meaningfully better free tier for a single-developer project.
+**GitHub (free) → Render auto-deploy on push.** Each service tracks its configured environment branch (`dev`, `QA`, or `prod`). No SSH deployment workflow or GitHub Actions deployment job is required; Actions can be added separately for tests. Promote reviewed changes through `dev` → `QA` → `prod`.
 
 ## 10. Summary table
 
@@ -70,11 +70,13 @@ Every resource below was compared against its real competitors before being lock
 | --- | --- |
 | Mobile | Native Android, Java |
 | Backend | FastAPI (Python) |
-| Hosting | Oracle Cloud Always Free VM |
-| Database | PostgreSQL (self-installed on the VM) |
+| Hosting | Render (free web service) |
+| Database | Supabase (managed PostgreSQL, free tier) |
 | Auth | Self-rolled JWT |
 | PDF | ReportLab |
 | Push | Firebase Cloud Messaging |
 | Historical import | Google Takeout (GPay), SMS history (bank), optional statement upload (bank) |
 | OCR fallback | Google ML Kit (on-device) |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub → Render auto-deploy on push |
+
+Current service limits and setup details: [Render Free](https://render.com/docs/free), [Supabase pricing](https://supabase.com/pricing), and [Supabase backups](https://supabase.com/docs/guides/platform/backups). Free hosting does not guarantee continuous availability.
