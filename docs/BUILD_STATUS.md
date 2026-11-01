@@ -25,6 +25,7 @@ The API currently exposes sync as the write path used by Android. The separately
 - The actual Supabase project has migrated dev/qa schemas with separate runtime roles. Both roles passed checks that they can access their own migrated tables and have no USAGE privilege on the other schema.
 - Live PostgreSQL smoke tests passed for both dev and QA authentication, sync, idempotency, user isolation, and PDF generation; synthetic accounts and records were removed afterward.
 - Android parser unit tests and backend API tests passed. Device instrumentation on the Samsung SM-E625F passed encrypted-storage, capture deduplication, split handling, and Android-to-local-API connection checks. The dev APK was installed and its overview screen visually checked.
+- Final verification: 7 parser tests per dev/QA variant, 6 backend API tests, 6 device instrumentation tests, both variant lint checks, and both APK signature checks passed. Lint retains non-blocking dependency/localization warnings.
 - Local credentials are kept in ignored backend `.env`, `.env.dev`, `.env.qa`, and `.env.migration` files. `.env` uses the restricted dev role; administrator credentials must not be placed in Render or Android.
 
 ## Remaining validation and features

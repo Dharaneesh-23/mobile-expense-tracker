@@ -14,7 +14,7 @@ These runtime settings are a contract for the future scaffolding, not implemente
 
 ## Create the remote on GitHub
 
-The local `origin` is now configured as `https://github.com/Dharaneesh-23/mobile-expense-tracker.git`. Do not run `remote add` again for this checkout. Authentication and initial remote inspection/push are pending.
+The local `origin` is configured as `https://github.com/Dharaneesh-23/mobile-expense-tracker.git`. Do not run `remote add` again. Authentication and remote inspection succeeded; dev preserves the initial remote main history. The current token was denied branch pushes with HTTP 403 (write access not granted). Update its selected-repository Contents permission to read/write before pushing. The tested implementation is committed locally on dev; QA/prod retain the setup baseline until promotion.
 
 Run the authentication helper in your own PowerShell terminal:
 
