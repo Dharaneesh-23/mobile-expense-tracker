@@ -10,11 +10,11 @@ One monorepo contains the Android app and backend. Long-lived branches are exact
 | `QA` | Verification with test data | `com.dharaneesh.expensetracker.qa` | Supabase `qa` schema |
 | `prod` | Future personal releases | `com.dharaneesh.expensetracker` | Deferred |
 
-These runtime settings are a contract for the future scaffolding, not implemented build variants or provisioned databases. Use independent database roles, JWT secrets, Firebase configuration, and API endpoints per environment. Separate application IDs will allow all three apps to coexist on one phone. Keep signing keys and financial exports out of Git; put local exports in ignored `private-data/`.
+The Android build variants and isolated Supabase dev/qa schemas are implemented. Production database provisioning remains deferred. Use independent database roles, JWT secrets, Firebase configuration, and API endpoints per environment. Separate application IDs allow all three apps to coexist on one phone. Keep signing keys and financial exports out of Git; put local exports in ignored `private-data/`.
 
 ## Create the remote on GitHub
 
-The local `origin` is configured as `https://github.com/Dharaneesh-23/mobile-expense-tracker.git`. Do not run `remote add` again. Authentication and remote inspection succeeded; dev preserves the initial remote main history. The current token was denied branch pushes with HTTP 403 (write access not granted). Update its selected-repository Contents permission to read/write before pushing. The tested implementation is committed locally on dev; QA/prod retain the setup baseline until promotion.
+The local `origin` is configured as `https://github.com/Dharaneesh-23/mobile-expense-tracker.git`. Authentication and pushes are verified: `dev`, `QA`, and `prod` exist on GitHub and track their matching local branches. `dev` is the repository default and contains the tested preview, preserving the initial remote `main` history. `QA` and `prod` retain their setup baseline until promotion; the original `main` branch is preserved. Do not run `remote add` again. The authentication instructions below are for reconnecting if needed.
 
 Run the authentication helper in your own PowerShell terminal:
 
