@@ -94,9 +94,9 @@ alembic/                       # DB migrations, env.py configured against core/c
 requirements.txt
 .env.example                   # documents required env vars, real .env never committed
 deploy/
-├─ nginx.conf
-└─ expense-backend.service       # systemd unit, matches 06_server_deployment_guide.md
-.github/workflows/deploy.yml    # SSH deploy on push to main
+└─ render.yaml                  # optional Render Blueprint; no secret values committed
+# Render auto-deploys on push to the service's configured dev / QA / prod branch.
+# No SSH deploy workflow needed; Render handles TLS and process management.
 ```
 
 ## 3. Build sequence for Codex

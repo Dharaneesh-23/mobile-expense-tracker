@@ -1,0 +1,13 @@
+# Copy to ignored signing.properties. Use forward slashes in Windows paths.
+dev.storeFile=C:/Users/YOUR_USER/expense-keys/dev.jks
+dev.storePassword=REPLACE_LOCALLY
+dev.keyAlias=expense-dev
+dev.keyPassword=REPLACE_LOCALLY
+qa.storeFile=C:/Users/YOUR_USER/expense-keys/qa.jks
+qa.storePassword=REPLACE_LOCALLY
+qa.keyAlias=expense-qa
+qa.keyPassword=REPLACE_LOCALLY
+prod.storeFile=C:/Users/YOUR_USER/expense-keys/prod.jks
+prod.storePassword=REPLACE_LOCALLY
+prod.keyAlias=expense-prod
+prod.keyPassword=REPLACE_LOCALLY

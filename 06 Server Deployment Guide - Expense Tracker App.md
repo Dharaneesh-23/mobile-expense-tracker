@@ -1,155 +1,95 @@
 # Expense Tracker App — Server Deployment Guide
 
-One Oracle Cloud Always Free VM runs everything: PostgreSQL, FastAPI (via systemd + Uvicorn), and nginx as the HTTPS front door. GitHub Actions deploys to it over SSH on every push to `main`.
+Render hosts FastAPI as a free web service; Supabase hosts managed PostgreSQL on its free tier. Render handles HTTPS and process management. Authentication stays in FastAPI using passlib + python-jose JWTs; Supabase Auth is not used. No Oracle VM, SSH deployment, nginx, Certbot, or systemd is required.
 
-## 1. Provision the VM
+## 1. Environments and free-tier limits
 
-- Create an Oracle Cloud account, go to Compute → Instances → Create Instance
-- Shape: **Ampere A1 (ARM)**, Always Free eligible — 4 OCPU / 24GB RAM is the free allowance
-- Image: Ubuntu 22.04 LTS
-- Generate and download an SSH key pair during creation; save the private key securely, it's the only way in
-- Note the public IP once the instance is running
+Keep Git branches exactly `dev`, `QA`, and `prod`, promoting reviewed changes in that order. A service auto-deploys only from its configured branch; merging into `prod` is the production deployment gate.
 
-## 2. Network & firewall
+| Environment | Backend | Database |
+| --- | --- | --- |
+| dev | Local FastAPI initially | `dev` schema in Supabase project `uespfuwurianxwopguwa` |
+| QA | Render free web service tracking `QA` | `qa` schema in the same Supabase project |
+| prod | Deferred until development/testing complete | No production schema provisioned |
 
-- In the VM's attached Virtual Cloud Network (VCN) security list, open ingress ports: **22** (SSH, ideally restricted to your own IP), **80** (HTTP, for Certbot's verification), **443** (HTTPS)
-- On the VM itself, enable `ufw` and allow the same three ports:
+Use separate database roles, JWT secrets, and Firebase configuration. The development decision is one Supabase project with two schemas, sharing the project's 500 MB Free database quota and availability. Render provides 750 free instance hours per workspace per month, shared by services. Do not assume multiple services can run continuously for free. Production is deferred. Do not create paid resources or add billing upgrades to bypass limits.
 
-```
-sudo ufw allow 22
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw enable
-```
+## 2. Create the Supabase project
 
-## 3. Base OS setup
+1. Sign in to Supabase and create a project in a Free organization. Choose a region near the backend and save a strong database password securely.
+2. Run `backend/sql/bootstrap_schemas.sql` to create isolated dev/qa schemas and roles. Follow `docs/SUPABASE_DEV_QA.md`; keep the two schemas out of the exposed Data API schemas. No production data is introduced during testing.
+3. In the project's Connect dialog, copy the actual connection details. For an IPv4 backend, use the shared pooler's **Session mode**, port `5432`. The host and username differ from the direct endpoint; do not construct them by guessing. Direct database connections on Free use IPv6.
+4. Configure TLS for the PostgreSQL driver, including certificate verification where supported. URL-encode special characters in a password if using a URL.
+5. Use a restricted application database role for runtime access and separate migration credentials. Enforce per-user access in FastAPI. Do not expose financial tables through Supabase's Data API: keep them in an unexposed schema, or restrict grants and enable appropriate RLS. This remains necessary even though Android uses only FastAPI.
 
-```
-sudo apt update && sudo apt upgrade -y
-sudo adduser deploy
-sudo usermod -aG sudo deploy
-```
+Supabase Auth, Storage, and Edge Functions are not required for this architecture. Android receives only the FastAPI base URL and application tokens; database credentials and Supabase privileged keys never ship in the APK.
 
-Switch to the `deploy` user for everything from here on — avoid running the app as root.
+## 3. Prepare the backend repository
 
-## 4. PostgreSQL
+The monorepo stores Python code under `backend/`, containing `app/main.py`, `requirements.txt` and a tested dependency lock, Alembic configuration/migrations, and a sanitized `.env.example`. Current implementation and remaining work are tracked in `docs/BUILD_STATUS.md`.
 
-```
-sudo apt install -y postgresql postgresql-contrib
-sudo -u postgres psql -c "CREATE USER expense_app WITH PASSWORD '<strong-password>';"
-sudo -u postgres psql -c "CREATE DATABASE expense_tracker OWNER expense_app;"
-```
+Add a lightweight `/health` route that returns no credentials or financial data. Read configuration through environment settings. Keep a small SQLAlchemy connection pool suitable for the free database and recycle stale connections. Generated PDFs and uploaded statements must use bounded temporary storage or streaming and be discarded after processing.
 
-Postgres listens on localhost only by default — leave it that way, FastAPI connects via `127.0.0.1`, never expose 5432 externally.
+## 4. Create the Render web service
 
-## 5. Python & FastAPI
+1. Sign in to Render and connect GitHub, granting access only to `Dharaneesh-23/mobile-expense-tracker`.
+2. Select **New → Web Service**, Python runtime, and the **Free** instance type. Create QA first.
+3. Select branch `QA` and root directory `backend` for the proposed monorepo layout. Choose a nearby available region.
+4. Set the build command to `pip install -r requirements.txt`.
+5. Set the start command to `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+6. Select and pin a supported Python version compatible with the dependency lock when scaffolding the backend. Set the health-check path to `/health`.
+7. Configure environment variables before deploying. Enable auto-deploy **On Commit** for the selected branch.
 
-```
-sudo apt install -y python3-pip python3-venv
-git clone <your-repo-url> /home/deploy/expense-backend
-cd /home/deploy/expense-backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+Render provides an `https://...onrender.com` address and managed TLS; a purchased domain is not required. An optional `deploy/render.yaml` Blueprint can describe the service later; select its path explicitly when creating the Blueprint. Store secret references only, never real secrets, in YAML.
 
-Create `/home/deploy/expense-backend/.env` (never committed to git) with the database URL, JWT secret, and Firebase credentials.
+## 5. Environment variables and secrets
 
-## 6. systemd service
+| Variable | Purpose |
+| --- | --- |
+| `APP_ENV` | `dev`, `QA`, or `prod` |
+| `DATABASE_URL` | Runtime connection URL for this environment's restricted database role |
+| `MIGRATION_DATABASE_URL` | Separate privileged connection for controlled migrations, only where required |
+| `JWT_SECRET_KEY` | Strong, unique random signing secret per environment |
+| `JWT_ALGORITHM` | Application-supported signing algorithm, initially `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Initially `15` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Initially `30` |
+| `FIREBASE_CREDENTIALS_PATH` | Render secret-file path for FCM service credentials, when push is implemented |
 
-Create `/etc/systemd/system/expense-backend.service`:
+These names are the configuration contract to implement in `app/core/config.py`. Render supplies `PORT`. Use Render's environment settings and secret files for hosted secrets and ignored local `.env` files for development. Do not commit secrets to `.env.example`, `render.yaml`, logs, or GitHub. A GitHub PAT is not an application environment variable; authorize Render through its GitHub integration. FCM configuration can wait until push is implemented.
 
-```
-[Unit]
-Description=Expense Tracker FastAPI
-After=network.target postgresql.service
+## 6. Migrations
 
-[Service]
-User=deploy
-WorkingDirectory=/home/deploy/expense-backend
-EnvironmentFile=/home/deploy/expense-backend/.env
-ExecStart=/home/deploy/expense-backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
-Restart=always
+Commit reviewed Alembic migrations alongside code. Run migrations against QA first, then separately against production after a backup and review. Use the migration role; runtime connections should not have schema-owner privileges.
 
-[Install]
-WantedBy=multi-user.target
-```
+For initial setup and subsequent releases, run `alembic upgrade head` from a trusted local backend environment with the correct migration connection configured. Confirm `APP_ENV` and the destination project before running it. Use direct IPv6 connectivity for migration/backup tools when available; use the documented session-pooler connection if the local network requires IPv4.
 
-```
-sudo systemctl enable expense-backend
-sudo systemctl start expense-backend
-```
+Do not rely on Render Free providing a pre-deploy command or interactive shell. Do not put migrations into every Uvicorn startup or the build command: restarts and overlapping deployments can otherwise race or change the database before code is approved. Keep schema changes backward-compatible with the running release.
 
-systemd restarts the app automatically on crash or reboot.
+## 7. Auto-deployment and verification
 
-## 7. nginx reverse proxy
+Render builds and deploys when commits reach its selected branch. QA tracks `QA`; production tracks `prod`. No SSH key or GitHub Actions deploy job is needed. Optional GitHub Actions tests are independent of deployment.
 
-```
-sudo apt install -y nginx
-```
+After each deployment, check Render build/runtime logs, `/health`, database connectivity, authentication, per-user isolation, and an Android sync round-trip. Review migrations before promoting `QA` to `prod`. Render code rollback does not undo database migrations; database recovery requires a separate plan.
 
-`/etc/nginx/sites-available/expense-backend`:
+## 8. Sleep, pausing, and temporary files
 
-```
-server {
-    listen 80;
-    server_name <your-domain-or-ip>;
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
+Render Free sleeps after 15 minutes without inbound traffic. The first request can take about one minute to wake it. Android should retain local data, show sync status, retry with backoff, and avoid duplicate writes. Server budget alerts are delayed while requests are queued; local notifications continue offline. Do not rely on an in-process scheduler running continuously on Free.
 
-```
-sudo ln -s /etc/nginx/sites-available/expense-backend /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-```
+Supabase Free projects may pause after a week of inactivity; resume the project from the dashboard before testing if needed. Monitor database size, egress, and Render shared instance hours/build quotas. No always-on guarantee is part of this plan.
 
-## 8. SSL via Certbot
+Render's local filesystem is ephemeral and is lost across restarts, redeploys, and sleep. Do not keep durable reports, uploads, SQLite databases, or backups there. Stream reports to Android and retain durable transaction records only in Supabase PostgreSQL.
 
-```
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d <your-domain>
-```
+## 9. Manual backups and restore checks
 
-Certbot edits the nginx config to serve HTTPS and sets up auto-renewal via a systemd timer — no manual renewal needed. (Requires an actual domain name pointed at the VM's IP; a bare IP address can't get a Let's Encrypt certificate.)
+Supabase Free has no automatic database backups. Export regularly and before production migrations using the Supabase CLI `db dump` workflow or compatible PostgreSQL `pg_dump` tools from a trusted local machine. Back up application schema, data, and required roles/grants, not just migration scripts. Keep database passwords out of command arguments and logs; use a protected password file or secure credential prompt.
 
-## 9. CI/CD — GitHub Actions deploy
+Store encrypted exports off-site, outside Git and outside Render's filesystem, with a documented retention policy. The repository's `backups/` path is ignored but is not itself an off-site backup. Test restoration into an isolated disposable local database and verify record counts and ownership/access controls before relying on the backup. Storage objects, if introduced later, require a separate backup process.
 
-`.github/workflows/deploy.yml`, triggered on push to `main`:
+## 10. Official references
 
-```
-name: Deploy
-on:
-  push:
-    branches: [main]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: deploy
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            cd /home/deploy/expense-backend
-            git pull
-            source venv/bin/activate
-            pip install -r requirements.txt
-            sudo systemctl restart expense-backend
-```
-
-`VM_HOST` and `VM_SSH_KEY` are stored as GitHub repo secrets, never committed.
-
-## 10. Backups
-
-A simple daily cron job dumps the database, since there's no managed-backup service on a self-hosted VM:
-
-```
-0 2 * * * pg_dump -U expense_app expense_tracker > /home/deploy/backups/db-$(date +\%F).sql
-```
-
-Keep a rolling window (e.g. delete dumps older than 14 days) so backups don't quietly fill the VM's disk.
+- [Render FastAPI deployment](https://render.com/docs/deploy-fastapi)
+- [Render deployment configuration](https://render.com/docs/deploys)
+- [Render Free limits](https://render.com/docs/free)
+- [Supabase pricing and free limits](https://supabase.com/pricing)
+- [Supabase PostgreSQL connections](https://supabase.com/docs/guides/database/connecting-to-postgres)
+- [Supabase backups](https://supabase.com/docs/guides/platform/backups)

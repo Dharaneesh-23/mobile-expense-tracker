@@ -1,0 +1,27 @@
+# Optional Blueprint. Set its path to deploy/render.yaml in Render.
+services:
+  - type: web
+    name: expense-tracker-qa
+    runtime: python
+    plan: free
+    branch: QA
+    rootDir: backend
+    buildCommand: pip install -r requirements.lock.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: APP_ENV
+        value: qa
+      - key: DB_SCHEMA
+        value: qa
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOW_REGISTRATION
+        value: false
+      - key: UPDATES_GITHUB_REPOSITORY
+        value: Dharaneesh-23/mobile-expense-tracker
+      - key: UPDATES_GITHUB_TOKEN
+        sync: false

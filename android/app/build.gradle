@@ -1,0 +1,66 @@
+plugins { id 'com.android.application' }
+
+def keys = new Properties()
+def keysFile = rootProject.file('signing.properties')
+if (keysFile.exists()) keysFile.withInputStream { keys.load(it) }
+android {
+    namespace 'com.dharaneesh.expensetracker'
+    compileSdk { version = release(36) { minorApiLevel = 1 } }
+    defaultConfig {
+        applicationId 'com.dharaneesh.expensetracker'
+        minSdk 26
+        targetSdk 36
+        versionCode providers.gradleProperty('appVersionCode').getOrElse('100').toInteger()
+        versionName providers.gradleProperty('appVersionName').getOrElse('0.3.0-preview')
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        javaCompileOptions { annotationProcessorOptions { arguments += ['room.schemaLocation': "$projectDir/schemas".toString()] } }
+    }
+    buildFeatures { buildConfig = true; resValues = true }
+    flavorDimensions += 'environment'
+    signingConfigs {
+        ['dev','qa','prod'].each { env ->
+            create(env) {
+                if (keys.getProperty("${env}.storeFile")) {
+                    storeFile file(keys.getProperty("${env}.storeFile"))
+                    storePassword keys.getProperty("${env}.storePassword")
+                    keyAlias keys.getProperty("${env}.keyAlias")
+                    keyPassword keys.getProperty("${env}.keyPassword")
+                }
+            }
+        }
+    }
+    productFlavors {
+        dev { dimension 'environment'; applicationIdSuffix '.dev'; resValue 'string','app_name','Expense • Dev' }
+        qa { dimension 'environment'; applicationIdSuffix '.qa'; resValue 'string','app_name','Expense • QA' }
+        prod { dimension 'environment'; resValue 'string','app_name','Expense Tracker' }
+    }
+    buildTypes { debug { }; release { minifyEnabled false } }
+    productFlavors.all { flavor ->
+        if (keys.getProperty("${flavor.name}.storeFile")) flavor.signingConfig = signingConfigs.getByName(flavor.name)
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { abortOnError true }
+}
+dependencies {
+    implementation 'androidx.room:room-runtime:2.7.2'
+    annotationProcessor 'androidx.room:room-compiler:2.7.2'
+    implementation 'androidx.work:work-runtime:2.10.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'androidx.core:core:1.15.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}
+
+tasks.configureEach { task ->
+    if (task.name.startsWith('pre') && task.name.endsWith('ReleaseBuild')) {
+        def env = task.name.substring(3, task.name.length() - 'ReleaseBuild'.length()).toLowerCase()
+        if (['dev', 'qa', 'prod'].contains(env)) {
+            task.doFirst {
+                if (!['storeFile','storePassword','keyAlias','keyPassword'].every { keys.getProperty("${env}.${it}") }) {
+                    throw new GradleException("Configure local signing.properties for ${env} before building a release APK. Debug APKs work without it.")
+                }
+            }
+        }
+    }
+}

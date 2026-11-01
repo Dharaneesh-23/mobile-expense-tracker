@@ -58,9 +58,9 @@ A personal expense-tracking Android app that automatically captures UPI and bank
 | --- | --- |
 | Mobile platform | Native Android, Java |
 | Backend framework | FastAPI (Python) |
-| Hosting | Oracle Cloud Always Free VM (self-managed) |
-| Database | PostgreSQL, self-installed on the same VM |
+| Hosting | Render (free web service) |
+| Database | Supabase (managed PostgreSQL, free tier) |
 | Auth | Self-rolled JWT (passlib + python-jose) |
 | PDF reports | ReportLab |
 | Push alerts | Firebase Cloud Messaging |
-| CI/CD | GitHub Actions → SSH deploy to VM |
+| CI/CD | GitHub → Render auto-deploy on push to the configured environment branch |
