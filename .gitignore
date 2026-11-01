@@ -1,0 +1,48 @@
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+!*.env.example
+local.properties
+**/local.properties
+*.jks
+*.keystore
+*.pem
+*.key
+google-services.json
+*firebase-adminsdk*.json
+service-account*.json
+credentials*.json
+
+# Android / Java
+.gradle/
+.kotlin/
+.idea/
+*.iml
+**/build/
+.cxx/
+.externalNativeBuild/
+captures/
+*.apk
+*.aab
+!gradle/wrapper/gradle-wrapper.jar
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Private financial data and generated files
+private-data/
+backups/
+*.db
+*.sqlite*
+*.log
+.DS_Store
+Thumbs.db
