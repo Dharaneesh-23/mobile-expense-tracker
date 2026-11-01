@@ -14,7 +14,7 @@
 | Emulator | Installed; no configured AVD was reported |
 | SDK command-line tools | Not present in the inspected SDK directory |
 | Python | 3.10.0 available |
-| Docker CLI | 29.2.1 available; engine not yet verified |
+| Docker CLI | 29.2.1 available; Docker Desktop Linux engine was unreachable |
 | GitHub CLI | Not found on PATH; optional, HTTPS Git works without it |
 
 ## Start a development terminal
