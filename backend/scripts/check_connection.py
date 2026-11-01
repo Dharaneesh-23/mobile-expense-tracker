@@ -18,7 +18,8 @@ try:
         tables = connection.execute(text('SELECT table_name FROM information_schema.tables WHERE table_schema = :schema'), {'schema':cfg.db_schema}).scalars().all()
         if not own_usage or other_usage:
             raise SystemExit('Role isolation failed: use the environment-specific runtime role and review schema grants.')
-        required = {'users', 'records', 'refresh_sessions', 'login_attempts'}
+        required = {'users', 'records', 'refresh_sessions', 'login_attempts', 'alembic_version',
+                    'bank_accounts','categories','transactions','budgets','split_groups','split_members','split_shares','sync_log'}
         if not required.issubset(set(tables)):
             raise SystemExit('Connection and schema isolation verified; run migrations before API testing.')
         print(f'{cfg.app_env}: database connection, schema isolation, and required tables verified.')

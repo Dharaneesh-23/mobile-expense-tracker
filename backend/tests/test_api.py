@@ -11,7 +11,7 @@ os.environ['DATABASE_URL'] = 'sqlite://'
 os.environ['ALLOW_REGISTRATION'] = 'true'
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
@@ -21,12 +21,17 @@ from app.main import app
 def client():
     engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool,
                            execution_options={'schema_translate_map': {'app_schema': None}})
+    @event.listens_for(engine,'connect')
+    def enable_foreign_keys(connection, _):
+        connection.execute('PRAGMA foreign_keys=ON')
     Base.metadata.create_all(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
     def override():
         with sessions() as db: yield db
     app.dependency_overrides[get_db] = override
-    with TestClient(app) as c: yield c
+    with TestClient(app) as c:
+        c.test_sessions=sessions
+        yield c
     app.dependency_overrides.clear()
     engine.dispose()
 

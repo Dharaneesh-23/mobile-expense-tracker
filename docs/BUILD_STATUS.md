@@ -12,25 +12,27 @@
 - Device-generated filtered PDF exports through Android's document picker.
 - Room persistence with AES-GCM encrypted financial payloads and Android Keystore keys; backups/transfers disabled.
 - FastAPI registration/login, rotating/revocable refresh sessions, rate limiting, per-user sync revisions/tombstones, transaction list filters, and server PDF generation.
-- Alembic initial migration, separate dev/qa schema/role bootstrap SQL, fail-closed environment validation, and a Render QA Blueprint.
+- Alembic migrations through `0002`, separate dev/qa schema/role bootstrap SQL, fail-closed environment validation, and a Render QA Blueprint.
+- Relational transactions, budgets, bank accounts, categories, split groups/members/shares, and per-device sync logs, updated atomically alongside the retained journal.
 
 ## Implementation decisions
 
-The first runnable build uses typed JSON financial records inside Room and PostgreSQL rather than the draft's separate relational entity tables. Stable UUIDs, update versions, per-user sync revisions, and deletion tombstones make the same representation usable offline and through sync. Financial payloads on Android are encrypted; indexed metadata contains only IDs, record type, timestamps, and sync state. Review messages remain on-device and are not synced.
+Android keeps encrypted typed payloads in Room. FastAPI now projects sync writes into the normalized PostgreSQL tables in the same transaction as the retained `records` journal. Transaction listing and server PDF reports read canonical relational rows. Client UUIDs, update versions, per-user revisions, and tombstones remain compatible with the installed APK. Namespaced physical IDs prevent one user's client UUID from colliding with another user's row; `sync_record_id` links the entities to their unchanged client IDs. Review messages remain on-device and are not synced.
 
-The API currently exposes sync as the write path used by Android. The separately named CRUD endpoints and normalized account/category/group tables in the original API/schema documents remain future work; they are not silently treated as implemented. Dates in SMS without a time are stored at IST midnight with `date_inferred=true`.
+The API exposes sync as Android's write path. The separately named CRUD routes in the original API design remain future work; the normalized account/category/group tables are now used by that sync path. Dates in SMS without a time are stored at IST midnight with `date_inferred=true`.
 
 ## Verified setup
 
 - The actual Supabase project has migrated dev/qa schemas with separate runtime roles. Both roles passed checks that they can access their own migrated tables and have no USAGE privilege on the other schema.
 - Live PostgreSQL smoke tests passed for both dev and QA authentication, sync, idempotency, user isolation, and PDF generation; synthetic accounts and records were removed afterward.
 - Android parser unit tests and backend API tests passed. Device instrumentation on the Samsung SM-E625F passed encrypted-storage, capture deduplication, split handling, and Android-to-local-API connection checks. The dev APK was installed and its overview screen visually checked.
-- Final verification: 7 parser tests per dev/QA variant, 6 backend API tests, 6 device instrumentation tests, both variant lint checks, and both APK signature checks passed. Lint retains non-blocking dependency/localization warnings.
+- Verification: 7 parser tests per dev/QA variant, 14 backend tests (including fresh/repeat migrations and backfill rollback), 6 original device instrumentation tests, and an additional real phone → FastAPI → Supabase test passed. Both APK lint/signature checks passed for the unchanged Android build. Lint retains non-blocking dependency/localization warnings.
+- Both live schemas contain all 13 expected tables and migration `0002`. Transaction/budget/split relationship smoke tests passed in dev and QA. Existing cloud financial journal counts were zero at backfill time; the retained journal was not deleted or rewritten. Synthetic test accounts and related rows were cleaned up.
 - Local credentials are kept in ignored backend `.env`, `.env.dev`, `.env.qa`, and `.env.migration` files. `.env` uses the restricted dev role; administrator credentials must not be placed in Render or Android.
 
 ## Remaining validation and features
 
-- Complete device-to-cloud multi-device synchronization and recovery testing after Render is deployed. Only dev/qa are permitted; no production schema exists.
+- Complete multi-device synchronization, recovery, and HTTPS Render testing after deployment. The phone-to-Supabase path through a local FastAPI service has passed. Only dev/qa are permitted; no production schema exists.
 - Render deployment is not yet active. A GitHub integration link alone does not deploy FastAPI or run migrations.
 - Firebase server/device registration and FCM push delivery are not configured. Current budget alerts are on-device only.
 - Google Takeout split JSON requires a confirmed ownership/payment mapping; the importer explicitly rejects it rather than guessing debts. PDF/password-protected bank statement import and bank-specific CSV mappings are not implemented; use the documented normalized CSV for now.

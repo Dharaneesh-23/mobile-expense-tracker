@@ -12,7 +12,7 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    Base.metadata.create_all(bind=op.get_bind())
+    Base.metadata.create_all(bind=op.get_bind(), tables=[models.User.__table__, models.RefreshSession.__table__, models.FinancialRecord.__table__, models.LoginAttempt.__table__])
 
 def downgrade():
-    Base.metadata.drop_all(bind=op.get_bind())
+    Base.metadata.drop_all(bind=op.get_bind(), tables=[models.LoginAttempt.__table__, models.FinancialRecord.__table__, models.RefreshSession.__table__, models.User.__table__])

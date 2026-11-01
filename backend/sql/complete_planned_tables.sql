@@ -1,7 +1,8 @@
 -- Run as postgres in Supabase SQL Editor after the app's Alembic 0001 migration.
 -- Adds the original relational design to BOTH dev and qa. Does not create prod.
 -- Preserves users, records, refresh_sessions, login_attempts, and existing data.
--- The current app still uses records; this script does NOT migrate its payloads.
+-- This base script does NOT backfill records. Alembic 0002 adds sync identity
+-- links; scripts/backfill_relational.py projects payloads without deleting them.
 -- user_id is varchar(36) to match the current users.id; new entity IDs are UUIDs.
 BEGIN;
 

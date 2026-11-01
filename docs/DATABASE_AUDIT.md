@@ -1,6 +1,6 @@
 # Supabase database audit — 2026-11-01
 
-Both `dev` and `qa` exist. Their runtime roles can access their own schema and cannot use the other schema. No production schema was requested or checked.
+Both `dev` and `qa` exist. Their runtime roles can access their own schema and cannot use the other schema. After the user applied the SQL and migration `0002` was run, all 13 tables below were verified present in both environments. No production schema was requested or created.
 
 | Table | dev | qa |
 | --- | --- | --- |
@@ -9,16 +9,16 @@ Both `dev` and `qa` exist. Their runtime roles can access their own schema and c
 | refresh_sessions | Present | Present |
 | login_attempts | Present | Present |
 | alembic_version | Present | Present |
-| bank_accounts | Missing | Missing |
-| categories | Missing | Missing |
-| transactions | Missing | Missing |
-| budgets | Missing | Missing |
-| split_groups | Missing | Missing |
-| split_members | Missing | Missing |
-| split_shares | Missing | Missing |
-| sync_log | Missing | Missing |
+| bank_accounts | Present | Present |
+| categories | Present | Present |
+| transactions | Present | Present |
+| budgets | Present | Present |
+| split_groups | Present | Present |
+| split_members | Present | Present |
+| split_shares | Present | Present |
+| sync_log | Present | Present |
 
-The five existing tables satisfy the current runnable implementation, which stores typed financial payloads in `records`. The eight missing tables belong to the original normalized relational plan. This difference is tracked in `BUILD_STATUS.md`.
+The initial audit found only the five journal/auth/migration tables. The eight relational tables have since been applied and connected to FastAPI's sync path. The current implementation is tracked in `BUILD_STATUS.md`.
 
 ## Add the planned tables
 
@@ -26,8 +26,8 @@ Run `backend/sql/complete_planned_tables.sql` in Supabase SQL Editor as `postgre
 
 Current `users.id` is `varchar(36)`, so references to existing users use that type; the new financial entity primary keys use PostgreSQL UUIDs. Text fields with CHECK constraints enforce the planned enumeration values. Existing app tables and financial records are preserved.
 
-The script was executed twice within one transaction against the actual project and **rolled back**. Both schemas contained all 13 tables during validation, with no duplicate seed categories after rerunning. No planned tables were permanently added by this audit. The script is suitable for this observed database state; `CREATE TABLE IF NOT EXISTS` does not repair unrelated pre-existing table definitions.
+Before user application, the script was executed twice in one transaction and rolled back to validate it. The user then applied it, and migration `0002` added sync identity links and an active-budget uniqueness index that permits replacing deleted limits. All 13 tables are now permanently present in both schemas. `CREATE TABLE IF NOT EXISTS` does not repair unrelated pre-existing table definitions.
 
 After applying it, use the final SELECT in the SQL file or refresh Supabase Table Editor and select `dev`/`qa` to see the 13 tables in each schema. Keep these schemas out of the exposed Data API schemas.
 
-**Creating the tables does not migrate JSON payloads out of `records` or change which tables the Android/FastAPI code uses.** That requires a separate reviewed data migration and backend change. Do not delete `records` or the existing auth tables.
+The backend change and journal-preserving backfill are now implemented and applied. New sync writes update both relational entities and the journal atomically. There were no cloud transaction/budget/split journal entries to move at backfill time. `records` remains the revision/tombstone compatibility journal; do not delete it or the auth tables. Relational transaction reads and report generation are live-tested.

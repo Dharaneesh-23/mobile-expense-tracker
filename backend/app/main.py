@@ -16,8 +16,9 @@ from .database import get_db
 from .models import User, RefreshSession, FinancialRecord, LoginAttempt
 from .schemas import Credentials, RefreshBody, SyncBody
 from .security import passwords, tokens, digest, current_user
+from . import relational
 
-app = FastAPI(title='Personal Expense Tracker', version='0.1.0')
+app = FastAPI(title='Personal Expense Tracker', version='0.2.0')
 
 @app.middleware('http')
 async def limit_request(request: Request, call_next):
@@ -38,7 +39,7 @@ async def limit_request(request: Request, call_next):
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'environment': settings().app_env}
+    return {'status': 'ok', 'environment': settings().app_env, 'storage': 'relational'}
 
 def throttle(db, email):
     key = digest(email.lower())
@@ -109,6 +110,7 @@ def sync(body: SyncBody, user=Depends(current_user), db=Depends(get_db)):
     locked = db.scalar(select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True))
     if body.cursor > locked.revision:
         raise HTTPException(409, 'Invalid cursor; reset sync cursor')
+    changed=[]
     for change in body.changes:
         if change.updated_at > int(time.time() * 1000) + 300000:
             raise HTTPException(422, 'Device clock is too far ahead')
@@ -123,7 +125,21 @@ def sync(body: SyncBody, user=Depends(current_user), db=Depends(get_db)):
         locked.revision += 1
         row.data = dict(change.data, id=str(change.id), kind=change.kind)
         row.updated_at, row.deleted, row.revision = change.updated_at, change.deleted, locked.revision
+        changed.append(row)
     db.flush()
+    try:
+        for kind in ('transaction','budget','split'):
+            for row in changed:
+                if row.kind==kind: relational.project(db,row)
+        relational.reconcile_split_links(db,user.id)
+        relational.touch_sync_log(db,user.id,body.device_id)
+        db.flush()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422,str(exc)) from None
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409,'Related record conflicts with an existing account, budget, or split') from None
     rows = db.scalars(select(FinancialRecord).where(FinancialRecord.user_id == user.id, FinancialRecord.revision > body.cursor).order_by(FinancialRecord.revision)).all()
     result = {'server_changes': [envelope(r) for r in rows], 'cursor': locked.revision}
     db.commit()
@@ -134,10 +150,8 @@ def transactions(direction: str | None = None, payee: str = '', bank: str = '', 
                  date_from: int | None = None, date_to: int | None = None, amount_min: Decimal | None = None,
                  amount_max: Decimal | None = None, page: int = Query(1, ge=1), limit: int = Query(50, ge=1, le=200),
                  user=Depends(current_user), db=Depends(get_db)):
-    records = db.scalars(select(FinancialRecord).where(FinancialRecord.user_id == user.id, FinancialRecord.kind == 'transaction', FinancialRecord.deleted.is_(False))).all()
     items = []
-    for r in records:
-        d = r.data
+    for d in relational.transaction_items(db,user.id):
         if direction and d.get('direction') != direction: continue
         if payee.lower() not in d.get('payee', '').lower() or bank.lower() not in d.get('bank', '').lower(): continue
         if category and d.get('category') != category: continue
@@ -146,7 +160,7 @@ def transactions(direction: str | None = None, payee: str = '', bank: str = '', 
         if date_to is not None and d['occurred_at'] > date_to: continue
         if amount_min is not None and Decimal(d['amount']) < amount_min: continue
         if amount_max is not None and Decimal(d['amount']) > amount_max: continue
-        items.append(dict(d, id=r.id))
+        items.append(d)
     items.sort(key=lambda d: d['occurred_at'], reverse=True)
     return {'items': items[(page-1)*limit:page*limit], 'total': len(items), 'page': page}
 
@@ -157,12 +171,11 @@ def report(payload: dict, user=Depends(current_user), db=Depends(get_db)):
         if start > end: raise ValueError()
     except (ValueError, TypeError):
         raise HTTPException(422, 'Use ordered millisecond timestamps') from None
-    rows = db.scalars(select(FinancialRecord).where(FinancialRecord.user_id == user.id, FinancialRecord.kind == 'transaction', FinancialRecord.deleted.is_(False))).all()
+    rows = relational.transaction_items(db,user.id)
     table = [['Date (UTC)', 'Payee', 'Direction', 'Amount (INR)']]
     styles = getSampleStyleSheet()
     debit = credit = Decimal('0')
-    for row in sorted(rows, key=lambda r: r.data['occurred_at']):
-        d = row.data
+    for d in sorted(rows, key=lambda d: d['occurred_at']):
         if not start <= d['occurred_at'] <= end: continue
         value = Decimal(d['amount'])
         if d['direction'] == 'debit': debit += value
