@@ -14,12 +14,27 @@ These runtime settings are a contract for the future scaffolding, not implemente
 
 ## Create the remote on GitHub
 
-1. Sign in to GitHub and create a repository named `mobile_expense_tracker`. Private is suitable for this personal project.
-2. Leave initialization options unchecked: no README, license, or .gitignore; these already exist locally.
-3. Copy the HTTPS repository URL. In PowerShell at `D:\mobile_expense_tracker`, replace `YOUR_USERNAME` below with your actual account:
+The local `origin` is now configured as `https://github.com/Dharaneesh-23/mobile-expense-tracker.git`. Do not run `remote add` again for this checkout. Authentication and initial remote inspection/push are pending.
+
+Run the authentication helper in your own PowerShell terminal:
 
 ```powershell
-git remote add origin https://github.com/YOUR_USERNAME/mobile_expense_tracker.git
+Set-Location D:\mobile_expense_tracker
+.\scripts\Connect-GitHub.ps1
+# Or use hidden PAT input:
+.\scripts\Connect-GitHub.ps1 -UsePat
+```
+
+Choose one authentication method. Browser login avoids managing a PAT. The PAT option reads hidden input and sends it to GitHub CLI through standard input, never a command-line argument or repository file. GitHub CLI manages credential storage. Do not put the PAT in `.env`, the repository URL, chat, or a shell command containing its literal value.
+
+For a fine-grained PAT, select only this repository and an expiration. Contents read/write permits code operations; Workflows read/write is needed when updating Actions workflows. Pull requests read/write permits PR management. Repository settings/environments may additionally require Administration and Environments write permissions; grant those only for setup if needed. See [GitHub's permission reference](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens).
+
+After login, tell the agent authentication is ready. It can inspect the remote and push `dev`, `QA`, and `prod`, then configure supported GitHub settings. If the remote already has commits, preserve them and reconcile history before pushing. Do not force-push over them.
+
+The repository has already been created. Once authenticated, inspect its branches before running the initial pushes:
+
+```powershell
+git ls-remote origin
 git push -u origin dev
 git push -u origin QA
 git push -u origin prod
@@ -27,9 +42,9 @@ git push -u origin prod
 
 Git Credential Manager is installed. Complete browser sign-in if prompted; do not paste tokens into chat or commit them. If `origin` already exists, inspect `git remote -v` before changing it.
 
-4. Set the GitHub repository default branch to `dev`.
-5. Under repository Settings → Environments, create `dev`, `QA`, and `prod` if supported by your account/repository plan. These are distinct from Git branches. Restrict deployments to the matching branch. Add production reviewers where supported; do not buy a plan for this project.
-6. Configure branch rules where supported: require pull requests and passing checks for `QA` and `prod`, block force pushes and deletion. Add required checks only after CI exists. If the private repository plan does not support enforcement, follow the same review process manually.
+1. Set the GitHub repository default branch to `dev`.
+2. Under repository Settings → Environments, create `dev`, `QA`, and `prod` if supported by your account/repository plan. These are distinct from Git branches. Restrict deployments to the matching branch. Add production reviewers where supported; do not buy a plan for this project.
+3. Configure branch rules where supported: require pull requests and passing checks for `QA` and `prod`, block force pushes and deletion. Add required checks only after CI exists. If the private repository plan does not support enforcement, follow the same review process manually.
 
 ## Daily work and promotion
 
