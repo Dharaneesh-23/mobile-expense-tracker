@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
-from pydantic import model_validator
+from pydantic import model_validator,SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     allow_registration: bool = False
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
+    updates_github_repository: str = 'Dharaneesh-23/mobile-expense-tracker'
+    updates_github_token: SecretStr = SecretStr('')
 
     @model_validator(mode='after')
     def validate_environment(self):

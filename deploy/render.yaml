@@ -21,3 +21,7 @@ services:
         sync: false
       - key: ALLOW_REGISTRATION
         value: false
+      - key: UPDATES_GITHUB_REPOSITORY
+        value: Dharaneesh-23/mobile-expense-tracker
+      - key: UPDATES_GITHUB_TOKEN
+        sync: false

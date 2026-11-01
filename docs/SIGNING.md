@@ -2,6 +2,8 @@
 
 This app is for direct installation on your own Android phone. Play Console, App Bundles, store declarations, and publishing accounts are not required.
 
+Current personal-test choice: QA and prod use the existing Android debug keystore, not new custom release keys. Both installed preview APKs have matching signing certificates. Preserve that exact key and configure the encrypted GitHub signing secret using `scripts/Configure-UpdateSigning.ps1` for in-app updates; see `PRIVATE_APP_UPDATES.md`. The custom-key instructions below remain an option for a later deliberate reinstall/migration.
+
 1. Open `D:\mobile_expense_tracker\android` as a project in Android Studio. Let Gradle sync finish.
 2. Choose Build → Generate Signed App Bundle or APK → APK → Create new.
 3. Save the JKS outside this repository, for example under your user profile's `expense-keys` directory. Use a strong password, RSA 2048 or stronger, and a long validity period. Keep a secure backup of the file and passwords.

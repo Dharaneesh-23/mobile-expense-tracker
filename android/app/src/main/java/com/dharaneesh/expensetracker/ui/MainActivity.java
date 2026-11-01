@@ -247,6 +247,12 @@ public class MainActivity extends Activity {
             + money(credit.subtract(debit).toPlainString()),
         15);
     button(content, "+ Add a transaction", () -> editTransaction(null));
+    if (BuildConfig.FLAVOR.equals("qa") || BuildConfig.FLAVOR.equals("prod")) {
+      button(
+          content,
+          "App updates",
+          () -> new com.dharaneesh.expensetracker.update.AppUpdater(this).open());
+    }
     text(content, "Recent activity", 21);
     List<JSONObject> recent = kind("transaction");
     recent.sort((a, b) -> Long.compare(b.optLong("occurred_at"), a.optLong("occurred_at")));
@@ -339,14 +345,18 @@ public class MainActivity extends Activity {
                 .setOnClickListener(
                     w -> {
                       try {
-                        if (!f.getText().toString().isEmpty())
+                        if (!f.getText().toString().isEmpty()) {
                           LocalDate.parse(f.getText().toString());
-                        if (!t.getText().toString().isEmpty())
+                        }
+                        if (!t.getText().toString().isEmpty()) {
                           LocalDate.parse(t.getText().toString());
-                        if (!lo.getText().toString().isEmpty())
+                        }
+                        if (!lo.getText().toString().isEmpty()) {
                           new BigDecimal(lo.getText().toString());
-                        if (!hi.getText().toString().isEmpty())
+                        }
+                        if (!hi.getText().toString().isEmpty()) {
                           new BigDecimal(hi.getText().toString());
+                        }
                         query = q.getText().toString();
                         bank = b.getText().toString();
                         category = cat.getText().toString();
@@ -688,6 +698,7 @@ public class MainActivity extends Activity {
 
   private void settings() {
     SharedPreferences prefs = getSharedPreferences("settings", 0);
+    new com.dharaneesh.expensetracker.update.AppUpdater(this).addSettings(content);
     text(content, "Your data, your choice", 23);
     text(
         content,

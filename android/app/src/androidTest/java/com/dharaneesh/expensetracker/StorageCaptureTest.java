@@ -89,15 +89,33 @@ public class StorageCaptureTest {
     assertTrue(repo.list("split").get(0).optBoolean("group_incomplete"));
   }
 
-  @Test public void categoryCorrectionIsRememberedForFutureCaptures() throws Exception {
-    JSONObject item = new JSONObject().put("id", "correction-test").put("kind", "transaction")
-        .put("amount", "10.00").put("direction", "debit").put("payee", "Rule Test Merchant")
-        .put("occurred_at", 1792800000000L).put("category", "Other");
+  @Test
+  public void categoryCorrectionIsRememberedForFutureCaptures() throws Exception {
+    JSONObject item =
+        new JSONObject()
+            .put("id", "correction-test")
+            .put("kind", "transaction")
+            .put("amount", "10.00")
+            .put("direction", "debit")
+            .put("payee", "Rule Test Merchant")
+            .put("occurred_at", 1792800000000L)
+            .put("category", "Other");
     repo.save(item);
     item.put("category", "Travel");
     repo.save(item);
-    assertTrue(repo.capture("HDFC", "Sent Rs.30.00\nFrom HDFC Bank A/C *4321\nTo Rule Test Merchant\nOn 24/10/26\nRef 555555555555", "sms", 1792800000000L, "rule-event"));
-    for (JSONObject saved : repo.list("transaction")) assertEquals("Travel", saved.optString("category"));
+    assertTrue(
+        repo.capture(
+            "HDFC",
+            "Sent Rs.30.00\n"
+                + "From HDFC Bank A/C *4321\n"
+                + "To Rule Test Merchant\n"
+                + "On 24/10/26\n"
+                + "Ref 555555555555",
+            "sms",
+            1792800000000L,
+            "rule-event"));
+    for (JSONObject saved : repo.list("transaction"))
+      assertEquals("Travel", saved.optString("category"));
     assertFalse(preferences.getString("category_rules", "").contains("Rule Test Merchant"));
   }
 }
