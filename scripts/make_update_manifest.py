@@ -18,8 +18,8 @@ def generate(apk,channel,version_code,version_name,notes):
     command=(['cmd','/c'] if os.name=='nt' else [])+[str(signer),'verify','--print-certs',str(apk)]
     certificates=subprocess.check_output(command,text=True,encoding='utf-8')
     fingerprints=re.findall(r'certificate SHA-256 digest: ([0-9a-fA-F]+)',certificates)
-    expected=(Path(__file__).resolve().parents[1]/'android/signing-certificate.sha256').read_text().strip().lower()
-    if len(fingerprints)!=1 or fingerprints[0].lower()!=expected:
+    expected_certificate=(Path(__file__).resolve().parents[1]/'android/signing-certificate.sha256').read_text().strip().lower()
+    if len(fingerprints)!=1 or fingerprints[0].lower()!=expected_certificate:
         raise ValueError('APK signing certificate does not match the installed personal-use apps; refusing publication')
     for pattern,expected in [(r"package: name='([^']+)'",package),(r"versionCode='([^']+)'",str(version_code)),(r"versionName='([^']+)'",version_name)]:
         match=re.search(pattern,badging)
@@ -33,7 +33,7 @@ def generate(apk,channel,version_code,version_name,notes):
     minimum=re.search(r"(?:minSdkVersion|sdkVersion):'([0-9]+)'",badging)
     if minimum is None:raise ValueError('APK min SDK could not be determined')
     return {'channel':channel,'package_name':package,'version_code':version_code,'version_name':version_name,
-            'sha256':digest.hexdigest(),'signing_sha256':expected,'size':size,'apk_name':f'expense-{channel}-{version_code}.apk','min_sdk':int(minimum.group(1)),'notes':notes}
+            'sha256':digest.hexdigest(),'signing_sha256':expected_certificate,'size':size,'apk_name':f'expense-{channel}-{version_code}.apk','min_sdk':int(minimum.group(1)),'notes':notes}
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
