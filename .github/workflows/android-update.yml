@@ -27,6 +27,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      ANDROID_UPDATE_KEYSTORE: ${{ github.workspace }}/android/build/signing/debug.keystore
     steps:
       - name: Select the channel and monotonically increasing version
         id: version
@@ -66,7 +68,7 @@ jobs:
           from pathlib import Path
           secret=os.environ['SIGNING_KEY'].strip()
           if not secret:raise SystemExit('Configure ANDROID_DEBUG_KEYSTORE_BASE64 before building updates')
-          path=Path.home()/'.android/debug.keystore'
+          path=Path(os.environ['ANDROID_UPDATE_KEYSTORE'])
           path.parent.mkdir(parents=True,exist_ok=True)
           path.write_bytes(base64.b64decode(secret,validate=True))
           path.chmod(0o600)
