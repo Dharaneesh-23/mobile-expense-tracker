@@ -2,6 +2,12 @@
 
 Both app IDs can coexist on the phone: `com.dharaneesh.expensetracker.qa` (Expense • QA) and `com.dharaneesh.expensetracker` (Expense Tracker). They use separate app storage. The initial personal-use previews are version code 100 and use the existing debug signing key, as requested. Keep that exact key for future updates; changing keys requires uninstalling and can erase local data.
 
+## Live service
+
+The Free QA update backend is **https://expense-tracker-qa.onrender.com** (Singapore, deployed 2026-11-02). Its restricted database role, private download token, and signing workflow secret are configured. QA update delivery passed an online test using a disposable account; the downloaded APK matched its hash, size, and installed signing certificate. Create your personal login using the local helper below, then enter the URL and login in each app. Android still requires installation approval on the phone.
+
+The workflow now restores the key at an explicit Gradle path and refuses publication unless the APK certificate matches `android/signing-certificate.sha256`. An earlier APK with a different certificate remains a draft and is excluded from update discovery.
+
 ## On the phone
 
 Use **App updates** on the overview screen, or Settings → App updates. Configure the HTTPS update-service URL and sign in with your personal update account. Update credentials are encrypted with Android Keystore and are separate from financial sync credentials.

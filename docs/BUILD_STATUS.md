@@ -15,7 +15,7 @@
 - Alembic migrations through `0002`, separate dev/qa schema/role bootstrap SQL, fail-closed environment validation, and a Render QA Blueprint.
 - Relational transactions, budgets, bank accounts, categories, split groups/members/shares, and per-device sync logs, updated atomically alongside the retained journal.
 - QA/prod in-app update clients with separate encrypted update-service login, environment/version checks, SHA-256 verification, signing-certificate checks, and Android installation confirmation.
-- Authenticated private GitHub release metadata/APK proxy endpoints and a channel-specific GitHub Actions publishing workflow. Online activation still needs its signing secret, read-only download token, and Render service.
+- Authenticated private GitHub release metadata/APK proxy endpoints and a channel-specific GitHub Actions publishing workflow, with the signing secret and read-only token configured. The Free Render QA service is live.
 
 ## Implementation decisions
 
@@ -36,7 +36,7 @@ The API exposes sync as Android's write path. The separately named CRUD routes i
 ## Remaining validation and features
 
 - Complete multi-device synchronization, recovery, and HTTPS Render testing after deployment. The phone-to-Supabase path through a local FastAPI service has passed. Only dev/qa are permitted; no production schema exists.
-- Render deployment is not yet active. A GitHub integration link alone does not deploy FastAPI or run migrations.
+- Render QA is live at `https://expense-tracker-qa.onrender.com`. Online QA authentication and private APK metadata/download passed; size, SHA-256, and the installed signing certificate matched. A disposable test account was removed afterward. A personal login must still be entered in each app's update settings, followed by the Android installation confirmation.
 - Private updates away from the PC require the online update backend, a personal update login, the read-only repository credential, a configured signing secret, and published channel releases. See `PRIVATE_APP_UPDATES.md`. Prod data sync stays offline while only dev/qa database schemas are provisioned.
 - Firebase server/device registration and FCM push delivery are not configured. Current budget alerts are on-device only.
 - Google Takeout split JSON requires a confirmed ownership/payment mapping; the importer explicitly rejects it rather than guessing debts. PDF/password-protected bank statement import and bank-specific CSV mappings are not implemented; use the documented normalized CSV for now.
