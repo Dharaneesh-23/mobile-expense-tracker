@@ -8,6 +8,8 @@ The Free QA update backend is **https://expense-tracker-qa.onrender.com** (Singa
 
 The workflow now restores the key at an explicit Gradle path and refuses publication unless the APK certificate matches `android/signing-certificate.sha256`. An earlier APK with a different certificate remains a draft and is excluded from update discovery.
 
+Verified releases on 2026-11-02: QA **100401** and prod **100501**. Both channel workflows passed build, unit tests, lint, and certificate enforcement. Both APKs were downloaded through the live authenticated Render proxy; their sizes and SHA-256 hashes matched the manifests, and independent APK checks confirmed the installed certificate. The phone still has preview version 100 in both apps so the first in-app installation can be exercised. Disposable online-test accounts and sessions were removed.
+
 ## On the phone
 
 Use **App updates** on the overview screen, or Settings → App updates. Configure the HTTPS update-service URL and sign in with your personal update account. Update credentials are encrypted with Android Keystore and are separate from financial sync credentials.
