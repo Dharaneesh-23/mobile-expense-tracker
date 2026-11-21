@@ -26,12 +26,12 @@ import java.util.*;
 import org.json.*;
 
 public class MainActivity extends Activity {
-  private final int GREEN = Color.rgb(23, 106, 87), INK = Color.rgb(27, 43, 37);
-  private LinearLayout page, content;
-  private String tab = "Overview";
-  private Repository repo;
-  private List<JSONObject> records = new ArrayList<>();
-  private String query = "",
+  protected final int GREEN = Color.rgb(23, 106, 87), INK = Color.rgb(27, 43, 37);
+  protected LinearLayout page, content;
+  protected String tab = "Overview";
+  protected Repository repo;
+  protected List<JSONObject> records = new ArrayList<>();
+  protected String query = "",
       direction = "All",
       source = "All",
       bank = "",
@@ -40,8 +40,8 @@ public class MainActivity extends Activity {
       to = "",
       min = "",
       max = "";
-  private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
-  private final String[] categories = {
+  protected static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+  protected final String[] categories = {
     "Uncategorized", "Food", "Travel", "Bills", "Shopping", "Entertainment", "Other"
   };
 
@@ -69,11 +69,11 @@ public class MainActivity extends Activity {
     if (repo != null) reload();
   }
 
-  private int dp(int n) {
+  protected int dp(int n) {
     return (int) (n * getResources().getDisplayMetrics().density);
   }
 
-  private void reload() {
+  protected void reload() {
     ExpenseApp.IO.execute(
         () -> {
           try {
@@ -89,7 +89,7 @@ public class MainActivity extends Activity {
         });
   }
 
-  private void error(Exception e) {
+  protected void error(Exception e) {
     runOnUiThread(
         () ->
             new AlertDialog.Builder(this)
@@ -99,7 +99,7 @@ public class MainActivity extends Activity {
                 .show());
   }
 
-  private void task(Runnable job) {
+  protected void task(Runnable job) {
     ExpenseApp.IO.execute(
         () -> {
           try {
@@ -111,13 +111,13 @@ public class MainActivity extends Activity {
         });
   }
 
-  private List<JSONObject> kind(String kind) {
+  protected List<JSONObject> kind(String kind) {
     List<JSONObject> out = new ArrayList<>();
     for (JSONObject o : records) if (o.optString("kind").equals(kind)) out.add(o);
     return out;
   }
 
-  private TextView text(LinearLayout host, String value, int size) {
+  protected TextView text(LinearLayout host, String value, int size) {
     TextView t = new TextView(this);
     t.setText(value);
     t.setTextSize(size);
@@ -127,7 +127,7 @@ public class MainActivity extends Activity {
     return t;
   }
 
-  private Button button(LinearLayout host, String label, Runnable action) {
+  protected Button button(LinearLayout host, String label, Runnable action) {
     Button b = new Button(this);
     b.setText(label);
     b.setTextColor(GREEN);
@@ -137,7 +137,7 @@ public class MainActivity extends Activity {
     return b;
   }
 
-  private LinearLayout box(LinearLayout host) {
+  protected LinearLayout box(LinearLayout host) {
     LinearLayout b = new LinearLayout(this);
     b.setOrientation(LinearLayout.VERTICAL);
     b.setPadding(dp(16), dp(8), dp(16), dp(8));
@@ -148,7 +148,7 @@ public class MainActivity extends Activity {
     return b;
   }
 
-  private EditText field(LinearLayout host, String hint, String value) {
+  protected EditText field(LinearLayout host, String hint, String value) {
     EditText e = new EditText(this);
     e.setHint(hint);
     e.setText(value);
@@ -158,7 +158,7 @@ public class MainActivity extends Activity {
     return e;
   }
 
-  private String money(String amount) {
+  protected String money(String amount) {
     try {
       return "₹" + new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP).toPlainString();
     } catch (Exception e) {
@@ -166,17 +166,17 @@ public class MainActivity extends Activity {
     }
   }
 
-  private String date(long millis) {
+  protected String date(long millis) {
     return Instant.ofEpochMilli(millis)
         .atZone(IST)
         .format(DateTimeFormatter.ofPattern("dd MMM yyyy · HH:mm"));
   }
 
-  private BigDecimal amount(JSONObject o) {
+  protected BigDecimal amount(JSONObject o) {
     return new BigDecimal(o.optString("amount", "0"));
   }
 
-  private void render() {
+  protected void render() {
     page = new LinearLayout(this);
     page.setOrientation(LinearLayout.VERTICAL);
     page.setBackgroundColor(Color.rgb(245, 247, 244));
@@ -226,7 +226,7 @@ public class MainActivity extends Activity {
     }
   }
 
-  private void overview() {
+  protected void overview() {
     BigDecimal debit = BigDecimal.ZERO, credit = BigDecimal.ZERO;
     YearMonth month = YearMonth.now(IST);
     for (JSONObject t : kind("transaction"))
@@ -272,13 +272,13 @@ public class MainActivity extends Activity {
           });
   }
 
-  private void empty(String title, String detail) {
+  protected void empty(String title, String detail) {
     LinearLayout card = box(content);
     text(card, title, 20);
     text(card, detail, 15);
   }
 
-  private List<JSONObject> filtered() {
+  protected List<JSONObject> filtered() {
     List<JSONObject> out = new ArrayList<>();
     for (JSONObject t : kind("transaction")) {
       if (!query.isEmpty()
@@ -302,7 +302,7 @@ public class MainActivity extends Activity {
     return out;
   }
 
-  private void transactions() {
+  protected void transactions() {
     button(content, "+ Add transaction", () -> editTransaction(null));
     button(content, "Search & filters", this::filters);
     List<JSONObject> list = filtered();
@@ -311,7 +311,7 @@ public class MainActivity extends Activity {
     for (JSONObject t : list) transactionCard(t);
   }
 
-  private void filters() {
+  protected void filters() {
     LinearLayout form = new LinearLayout(this);
     form.setPadding(dp(20), 0, dp(20), 0);
     form.setOrientation(LinearLayout.VERTICAL);
@@ -375,7 +375,7 @@ public class MainActivity extends Activity {
     dialog.show();
   }
 
-  private void transactionCard(JSONObject t) {
+  protected void transactionCard(JSONObject t) {
     LinearLayout card = box(content);
     text(card, t.optString("payee", "Unknown"), 19).setTypeface(null, Typeface.BOLD);
     text(
@@ -396,7 +396,7 @@ public class MainActivity extends Activity {
     card.setOnClickListener(v -> editTransaction(t));
   }
 
-  private void editTransaction(JSONObject existing) {
+  protected void editTransaction(JSONObject existing) {
     LinearLayout form = new LinearLayout(this);
     form.setOrientation(LinearLayout.VERTICAL);
     form.setPadding(dp(20), 0, dp(20), 0);
@@ -515,7 +515,7 @@ public class MainActivity extends Activity {
     dialog.show();
   }
 
-  private void budgets() {
+  protected void budgets() {
     button(content, "+ Monthly category budget", this::editBudget);
     List<JSONObject> budgets = kind("budget");
     if (budgets.isEmpty())
@@ -543,7 +543,7 @@ public class MainActivity extends Activity {
     }
   }
 
-  private void editBudget() {
+  protected void editBudget() {
     LinearLayout form = new LinearLayout(this);
     form.setOrientation(LinearLayout.VERTICAL);
     form.setPadding(dp(20), 0, dp(20), 0);
@@ -587,7 +587,7 @@ public class MainActivity extends Activity {
     d.show();
   }
 
-  private void splits() {
+  protected void splits() {
     button(content, "+ Add an obligation", () -> editSplit(null));
     List<JSONObject> all = kind("split");
     if (all.isEmpty())
@@ -609,7 +609,7 @@ public class MainActivity extends Activity {
     }
   }
 
-  private void editSplit(JSONObject original) {
+  protected void editSplit(JSONObject original) {
     boolean editing = original != null && original.optString("kind").equals("split");
     LinearLayout form = new LinearLayout(this);
     form.setOrientation(LinearLayout.VERTICAL);
@@ -677,7 +677,7 @@ public class MainActivity extends Activity {
     d.show();
   }
 
-  private void reports() {
+  protected void reports() {
     text(content, "Export a private PDF", 23);
     text(
         content,
@@ -696,7 +696,7 @@ public class MainActivity extends Activity {
         });
   }
 
-  private void settings() {
+  protected void settings() {
     SharedPreferences prefs = getSharedPreferences("settings", 0);
     new com.dharaneesh.expensetracker.update.AppUpdater(this).addSettings(content);
     text(content, "Your data, your choice", 23);
@@ -816,7 +816,7 @@ public class MainActivity extends Activity {
         12);
   }
 
-  private void parseMessage() {
+  protected void parseMessage() {
     LinearLayout form = new LinearLayout(this);
     form.setOrientation(LinearLayout.VERTICAL);
     EditText title = field(form, "Notification title (optional)", "");
@@ -857,7 +857,7 @@ public class MainActivity extends Activity {
         .show();
   }
 
-  private void importSms() {
+  protected void importSms() {
     task(
         () -> {
           int count = 0;
@@ -886,7 +886,7 @@ public class MainActivity extends Activity {
         });
   }
 
-  private void login() {
+  protected void login() {
     SharedPreferences prefs = getSharedPreferences("settings", 0);
     LinearLayout form = new LinearLayout(this);
     form.setOrientation(LinearLayout.VERTICAL);
@@ -978,7 +978,7 @@ public class MainActivity extends Activity {
           });
   }
 
-  private void savePdf(Uri uri, List<JSONObject> rows) {
+  protected void savePdf(Uri uri, List<JSONObject> rows) {
     PdfDocument pdf = new PdfDocument();
     try {
       Paint paint = new Paint();

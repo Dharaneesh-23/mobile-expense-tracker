@@ -34,6 +34,40 @@ public class StorageCaptureTest {
   }
 
   @Test
+  public void historyBatchDeduplicatesAndReleasesCacheAfterFailure() throws Exception {
+    repo.save(
+        new JSONObject()
+            .put("id", "preserved")
+            .put("kind", "transaction")
+            .put("amount", "17.00")
+            .put("payee", "Existing"));
+    String original = repo.db.records().get("preserved").encrypted;
+    repo.withCaptureBatch(
+        () -> {
+          for (int pass = 0; pass < 2; pass++)
+            for (int i = 0; i < 300; i++) {
+              String body =
+                  "Sent Rs.30.00\nFrom HDFC Bank A/C *4321\nTo SAMPLE PERSON\nOn 24/10/26\nRef "
+                      + (111111111111L + i);
+              assertEquals(
+                  pass == 0, repo.capture("HDFC", body, "sms", 1792800000000L, "batch:" + i));
+            }
+        });
+    assertEquals(301, repo.list("transaction").size());
+    assertEquals(original, repo.db.records().get("preserved").encrypted);
+    try {
+      repo.withCaptureBatch(
+          () -> {
+            throw new IllegalArgumentException("synthetic");
+          });
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+    repo.withCaptureBatch(() -> assertEquals(301, repo.list("transaction").size()));
+    assertFalse(repo.capture(null, null, "sms", 0, "empty"));
+  }
+
+  @Test
   public void financialPayloadIsEncryptedAndDeleteIsTracked() throws Exception {
     repo.save(
         new JSONObject()

@@ -1,3 +1,9 @@
+## Dev capture removal — 2026-11-21
+
+Dev now excludes READ_SMS, RECEIVE_SMS, SmsReceiver and NotificationCaptureService through its manifest overlay. Capture consent, notification-listener setup and inbox scanning controls were removed from dev. Existing SMS/GPay source filters remain for previously stored records. Manual paste, file/Takeout imports, budgets, reports and optional sync remain available.
+
+The dev pipeline builds/tests/lints dev, restores the existing signing key from ANDROID_DEBUG_KEYSTORE_BASE64, verifies package/signature and absence of capture declarations, then publishes a versioned APK and checksum metadata as a GitHub prerelease. Its push trigger is limited to dev; QA/prod workflows are unchanged. The user installs from the release link. No device data was read, and no APK was installed on a phone for this change.
+
 # Personal-use development build
 
 ## Implemented
@@ -39,7 +45,7 @@ The API exposes sync as Android's write path. The separately named CRUD routes i
 - Render QA is live at `https://expense-tracker-qa.onrender.com`. Online QA authentication and private APK metadata/download passed; size, SHA-256, and the installed signing certificate matched. A disposable test account was removed afterward. A personal login must still be entered in each app's update settings, followed by the Android installation confirmation.
 - Private updates away from the PC require the online update backend, a personal update login, the read-only repository credential, a configured signing secret, and published channel releases. See `PRIVATE_APP_UPDATES.md`. Prod data sync stays offline while only dev/qa database schemas are provisioned.
 - Firebase server/device registration and FCM push delivery are not configured. Current budget alerts are on-device only.
-- Google Takeout split JSON requires a confirmed ownership/payment mapping; the importer explicitly rejects it rather than guessing debts. PDF/password-protected bank statement import and bank-specific CSV mappings are not implemented; use the documented normalized CSV for now.
+- Dev version 102 adds Google Takeout group-expense JSON import with explicit owner mapping, paged preview, user confirmation, settled/pending separation, stable duplicate IDs and atomic writes. The creator-as-repayment-requester assumption is disclosed in preview. QA/prod retain the earlier unsupported-format guard. See `TAKEOUT_SPLIT_IMPORT.md`. PDF/password-protected bank statement import and bank-specific CSV mappings remain unimplemented.
 - Automatic split-settlement matching, syncing category-learning rules across devices, custom/weekly budgets, device restore/multi-device cloud testing, and extended real-world capture testing remain pending.
 - SMS/notification parsers are based on the supplied examples. GPay screenshot text is visibly truncated; the app cannot reconstruct missing group names and flags them for editing.
 - No production-readiness or complete end-to-end claim is made by a successful APK build. Test on synthetic transactions first and compare with your actual statements before relying on totals.
@@ -56,3 +62,7 @@ Amounts use INR with at most two decimal places. Dates are ISO `YYYY-MM-DD` or I
 ## Signing and cloud setup
 
 See `docs/SIGNING.md` and `docs/SUPABASE_DEV_QA.md`. Do not send private keys or passwords in chat. Debug builds are usable without custom signing keys. A change of signing key requires reinstalling the application and can delete its local data.
+
+### Dev 103 device feedback update (2026-11-03)
+
+Installed 0.4.2-dev-fixes in place on the connected SM-S741B. Optimized supported SMS history scans, added progress and malformed-message handling, immediate Back navigation, custom Other category names, multiline button labels and paginated ledger/review rendering. Build/lint, 15 unit tests and 15 isolated device tests passed. Latest backed-up financial records were byte-for-byte unchanged after installation and tests. Real 90-day SMS import was deliberately left for user-triggered testing; retained logs did not establish a specific Java crash cause.

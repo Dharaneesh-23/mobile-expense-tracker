@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 def generate(apk,channel,version_code,version_name,notes):
-    package={'qa':'com.dharaneesh.expensetracker.qa','prod':'com.dharaneesh.expensetracker'}[channel]
+    package={'dev':'com.dharaneesh.expensetracker.dev','qa':'com.dharaneesh.expensetracker.qa','prod':'com.dharaneesh.expensetracker'}[channel]
     sdk=os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
     if not sdk:raise ValueError('Set ANDROID_HOME before generating release metadata')
     suffix='.exe' if os.name=='nt' else ''
@@ -38,7 +38,7 @@ def generate(apk,channel,version_code,version_name,notes):
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--apk',type=Path,required=True)
-    parser.add_argument('--channel',choices=['qa','prod'],required=True)
+    parser.add_argument('--channel',choices=['dev','qa','prod'],required=True)
     parser.add_argument('--version-code',type=int,required=True)
     parser.add_argument('--version-name',required=True)
     parser.add_argument('--output',type=Path,required=True)

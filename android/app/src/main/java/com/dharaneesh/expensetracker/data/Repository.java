@@ -12,6 +12,7 @@ public final class Repository {
   public final AppDatabase db;
   public final Vault vault;
   private final Context context;
+  private Map<String, List<JSONObject>> captureCache;
 
   public Repository(Context c) {
     this(c, Room.databaseBuilder(c, AppDatabase.class, "expense-v1.db").build());
@@ -31,9 +32,11 @@ public final class Repository {
     }
   }
 
-  public List<JSONObject> list(String kind) {
+  public synchronized List<JSONObject> list(String kind) {
+    if (captureCache != null && captureCache.containsKey(kind))
+      return new ArrayList<>(captureCache.get(kind));
     List<JSONObject> out = new ArrayList<>();
-    for (Record r : db.records().all())
+    for (Record r : kind.isEmpty() ? db.records().all() : db.records().ofKind(kind))
       if (kind.isEmpty() || r.kind.equals(kind)) out.add(unpack(r));
     return out;
   }
@@ -48,6 +51,11 @@ public final class Repository {
       r.updatedAt = Math.max(System.currentTimeMillis(), old == null ? 0 : old.updatedAt + 1);
       r.encrypted = vault.encrypt(data.toString());
       db.records().put(r);
+      if (captureCache != null && captureCache.containsKey(r.kind)) {
+        List<JSONObject> rows = captureCache.get(r.kind);
+        rows.removeIf(item -> item.optString("id").equals(r.id));
+        rows.add(new JSONObject(data.toString()).put("id", r.id).put("kind", r.kind));
+      }
       if (r.kind.equals("transaction") && data.optString("direction").equals("debit"))
         checkBudget(data.optString("category"));
       if (r.kind.equals("budget")) checkBudget(data.optString("category"));
@@ -77,6 +85,22 @@ public final class Repository {
     r.dirty = true;
     r.updatedAt = Math.max(System.currentTimeMillis(), r.updatedAt + 1);
     db.records().put(r);
+    if (captureCache != null && captureCache.containsKey(r.kind))
+      captureCache.get(r.kind).removeIf(item -> item.optString("id").equals(id));
+  }
+
+  /** Holds the repository monitor so this bounded, plaintext cache never leaks across jobs. */
+  public synchronized void withCaptureBatch(Runnable scan) {
+    if (captureCache != null) throw new IllegalStateException("A capture batch is already running");
+    Map<String, List<JSONObject>> cache = new HashMap<>();
+    for (String kind : new String[] {"transaction", "split", "review", "budget"})
+      cache.put(kind, list(kind));
+    captureCache = cache;
+    try {
+      scan.run();
+    } finally {
+      captureCache = null;
+    }
   }
 
   public static String category(String payee) {
@@ -89,6 +113,8 @@ public final class Repository {
 
   public synchronized boolean capture(
       String title, String body, String source, long timestamp, String eventId) {
+    if (body == null || body.isEmpty()) return false;
+    if (title == null) title = "";
     ParsedTransaction p = ParserEngine.parse(title, body, source, timestamp);
     try {
       if (p == null) {
