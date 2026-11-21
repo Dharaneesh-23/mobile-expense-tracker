@@ -30,7 +30,7 @@ jobs:
         run: |
           CODE=$((1000000 + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          echo "name=0.5.1-dev.$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=0.5.2-dev.$CODE" >> "$GITHUB_OUTPUT"
       - name: Install Android SDK components
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
@@ -61,7 +61,7 @@ jobs:
         env:
           CODE: ${{ steps.version.outputs.code }}
           NAME: ${{ steps.version.outputs.name }}
-          RELEASE_NOTES: 'Dev: restored user-triggered SMS history scans with READ_SMS permission. Automatic SMS/GPay capture remains removed. Manual entry, pasted messages and file imports remain. Update existing Dev installation without uninstalling to retain local data.'
+          RELEASE_NOTES: 'Dev: manual SMS scans restored; improved HDFC/Union bank classification, amount extraction and review filtering. OTPs, promotions, balance alerts, failed/pending payments and reminders are skipped. Automatic SMS/GPay capture remains disabled. READ_SMS can still trigger Play Protect installation checks. Update existing Dev installation without uninstalling to retain data.'
         run: |
           mkdir -p android/build/release
           APK="android/build/release/expense-dev-$CODE.apk"

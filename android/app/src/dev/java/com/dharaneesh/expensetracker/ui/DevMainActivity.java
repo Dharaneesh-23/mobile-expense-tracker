@@ -2043,19 +2043,21 @@ public class DevMainActivity extends MainActivity {
     final long since = smsDays == 0 ? 0 : System.currentTimeMillis() - smsDays * 86400000L;
     ExpenseApp.IO.execute(
         () -> {
-          final int[] counts = {0, 0, 0};
+          final int[] counts = {0, 0, 0, 0};
           Exception failure = null;
           try {
             repo.withCaptureBatch(
                 () -> {
+                  final int reviewBefore = repo.list("review").size();
                   try (android.database.Cursor c =
                       getContentResolver()
                           .query(
                               Uri.parse("content://sms/inbox"),
                               new String[] {"address", "body", "date"},
-                              "date >= ? AND (body LIKE ? OR body LIKE ?)",
+                              "date >= ? AND (body LIKE ? OR body LIKE ? OR address LIKE ? OR"
+                                  + " address LIKE ?)",
                               new String[] {
-                                Long.toString(since), "%HDFC Bank%", "%Union Bank of India%"
+                                Long.toString(since), "%HDFC%", "%Union%", "%HDFC%", "%UNION%"
                               },
                               "date ASC")) {
                     if (c == null)
@@ -2081,6 +2083,8 @@ public class DevMainActivity extends MainActivity {
                             });
                       }
                     }
+                  } finally {
+                    counts[3] = Math.max(0, repo.list("review").size() - reviewBefore);
                   }
                 });
           } catch (Exception e) {
@@ -2096,10 +2100,12 @@ public class DevMainActivity extends MainActivity {
                         + counts[0]
                         + " supported bank messages · Added "
                         + counts[1]
-                        + " records · Invalid messages "
+                        + " records · New review items "
+                        + counts[3]
+                        + " · Invalid messages "
                         + counts[2]
-                        + ". Existing records retained; duplicates skipped. Unparsed supported"
-                        + " messages appear in Review.";
+                        + ". Duplicates and unrelated/non-transaction messages are skipped."
+                        + " Existing records and review items are retained.";
                 if (problem != null) {
                   importResult +=
                       " Scan stopped early; saved records retained. Check SMS access before"

@@ -97,4 +97,96 @@ public class ParserEngineTest {
   public void paymentRequestNotExpense() {
     assertNull(ParserEngine.parse("Payment request", "Pay ₹20.00 to Sample", "gpay", 0));
   }
+
+  @Test
+  public void currencySpacingGroupingAndMinorUnits() {
+    String[][] cases = {
+      {"Rs. 1,234.50", "1234.50"},
+      {"INR: 1,00,000.25", "100000.25"},
+      {"₹\u00a025.5", "25.5"},
+      {"Rs:25 /-", "25"},
+      {"INR 250. 00", "250.00"},
+      {"Rs.0.01", "0.01"},
+      {"INR\u202f1,000", "1000"}
+    };
+    for (String[] c : cases) {
+      ParsedTransaction p =
+          sms("HDFC Bank A/c XX4321 has been debited by " + c[0] + " on 24-10-26 Ref 111111111111");
+      assertNotNull(c[0], p);
+      assertEquals(c[1], p.amount.toPlainString());
+    }
+  }
+
+  @Test
+  public void transactionAmountWinsOverBalanceAndLimit() {
+    for (String body :
+        new String[] {
+          "HDFC Bank Available balance INR 5,000.00. INR 250.00 has been debited from A/c XX4321.",
+          "Union Bank of India A/c *1234 credited with Rs.43.88. Avl Bal Rs.952.51.",
+          "HDFC Bank Credit limit Rs.50,000.00. Rs.250.00 spent using card XX4321."
+        }) {
+      ParsedTransaction p = sms(body);
+      assertNotNull(body, p);
+      assertEquals(body.contains("43.88") ? "43.88" : "250.00", p.amount.toPlainString());
+    }
+  }
+
+  @Test
+  public void supportedSenderAliasesAndCompletionVerbs() {
+    ParsedTransaction p =
+        ParserEngine.parse(
+            "VM-HDFCBK-S", "INR 75.00 withdrawn from account XX4321 on 24-10-26", "sms", 0);
+    assertNotNull(p);
+    assertEquals("HDFC Bank", p.bank);
+    assertEquals("debit", p.direction);
+    assertEquals("4321", p.accountLast4);
+    p = ParserEngine.parse("AD-UNIONB-S", "Rs.15.50 refunded to A/c *1234", "sms", 0);
+    assertNotNull(p);
+    assertEquals("Union Bank of India", p.bank);
+    assertEquals("credit", p.direction);
+  }
+
+  @Test
+  public void nonTransactionsDoNotEnterReview() {
+    for (String body :
+        new String[] {
+          "HDFC Bank balance Rs.500.00",
+          "HDFC Bank OTP for transaction 123456 amount Rs100",
+          "HDFC Bank transaction OTP is 123456 for Rs.100",
+          "123456 is your OTP for HDFC Bank transaction Rs.100",
+          "HDFC Bank payment of Rs.500 failed",
+          "HDFC Bank payment Rs.500 pending",
+          "HDFC Bank pre-approved loan Rs.50000 apply now",
+          "HDFC Bank pay minimum due Rs.500 by due date",
+          "HDFC Bank Rs.500 will be debited tomorrow",
+          "HDFC Bank payment request Rs.500",
+          "Union Bank of India credited cashback offer Rs.50 apply now"
+        }) {
+      assertNull(body, sms(body));
+      assertFalse(body, ParserEngine.shouldReview("BANK", body, "sms"));
+    }
+  }
+
+  @Test
+  public void ambiguousAndMalformedAmountsStayForReview() {
+    for (String body :
+        new String[] {
+          "HDFC Bank Rs.100 debited and Rs.25 credited to A/c XX4321",
+          "HDFC Bank debited Rs.1,2,3.00 from A/c XX4321",
+          "HDFC Bank debited INR 25.999 from A/c XX4321",
+          "Union Bank of India transaction amount unavailable for A/c *1234"
+        }) {
+      assertNull(body, sms(body));
+      assertTrue(body, ParserEngine.shouldReview("BANK", body, "sms"));
+    }
+  }
+
+  @Test
+  public void oldSecurityFooterDoesNotSuppressCompletedTransaction() {
+    ParsedTransaction p =
+        sms("Union Bank of India A/c *1234 credited for Rs.25.00. Never share OTP/PIN/CVV");
+    assertNotNull(p);
+    assertEquals("25.00", p.amount.toPlainString());
+    assertNull(ParserEngine.parse(null, null, "sms", 0));
+  }
 }

@@ -118,9 +118,7 @@ public final class Repository {
     ParsedTransaction p = ParserEngine.parse(title, body, source, timestamp);
     try {
       if (p == null) {
-        if (source.equals("sms") && !body.matches("(?is).*(HDFC Bank|Union Bank of India).*"))
-          return false;
-        if (body.matches("(?is).*\\b(otp|password|verification code)\\b.*")) return false;
+        if (!ParserEngine.shouldReview(title, body, source)) return false;
         for (JSONObject item : list("review"))
           if (item.optString("event_id").equals(eventId)) return false;
         save(
