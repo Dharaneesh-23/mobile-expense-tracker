@@ -1,4 +1,4 @@
-"""Fail the dev build if sensitive capture declarations return in the packaged APK."""
+"""Fail the dev build if automatic capture declarations return in the packaged APK."""
 import os
 from pathlib import Path
 import subprocess
@@ -14,7 +14,7 @@ def verify(apk):
         [str(aapt), 'dump', 'xmltree', str(apk), '--file', 'AndroidManifest.xml'],
         text=True, encoding='utf-8')
     forbidden = [
-        'android.permission.READ_SMS', 'android.permission.RECEIVE_SMS',
+        'android.permission.RECEIVE_SMS',
         'android.permission.SEND_SMS', 'android.permission.RECEIVE_MMS',
         'android.permission.RECEIVE_WAP_PUSH',
         'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
@@ -26,9 +26,11 @@ def verify(apk):
     present = [item for item in forbidden if item in manifest]
     if present:
         raise ValueError('Forbidden capture declarations: ' + ', '.join(present))
+    if 'android.permission.READ_SMS' not in manifest:
+        raise ValueError('Manual SMS scan requires READ_SMS')
     if 'com.dharaneesh.expensetracker.dev' not in manifest:
         raise ValueError('Expected dev package')
-    print('Verified packaged dev manifest: no SMS access, SMS receiver, notification listener or accessibility service.')
+    print('Verified packaged dev manifest: manual READ_SMS access present; no SMS receiver, live SMS permission, notification listener or accessibility service.')
 
 
 if __name__ == '__main__':

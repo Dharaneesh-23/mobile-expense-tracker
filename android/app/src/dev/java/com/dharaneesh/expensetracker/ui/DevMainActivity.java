@@ -3,6 +3,7 @@ package com.dharaneesh.expensetracker.ui;
 import android.Manifest;
 import android.app.*;
 import android.content.*;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
@@ -56,6 +57,7 @@ public class DevMainActivity extends MainActivity {
   private boolean formOpen = false, dirty = false;
   private int transactionDisplayLimit = 50, reviewDisplayLimit = 50;
   private String busyStatus = "";
+  private int smsDays = 90;
   private TextView importProgress;
   private volatile boolean busy = false;
   private int loadGeneration = 0;
@@ -1552,8 +1554,8 @@ public class DevMainActivity extends MainActivity {
   private void welcome() {
     message(
         "Your expenses, in one place",
-        "Add transactions manually, paste selected bank messages, or import supported files. This"
-            + " dev version does not read your SMS inbox or other apps' notifications.");
+        "Add transactions, scan supported bank SMS when you choose, paste selected messages, or"
+            + " import files. Automatic SMS and notification capture are disabled.");
     button(content, "Import a File", () -> go("Import History"));
     secondary(content, "Go to Home", () -> switchTab("Home"));
   }
@@ -1561,8 +1563,8 @@ public class DevMainActivity extends MainActivity {
   private void permissions() {
     message(
         "Budget notifications",
-        "Optional alerts when a monthly category budget is reached. SMS and notification capture"
-            + " are unavailable in this dev version.");
+        "Optional alerts when a monthly category budget is reached. Manual SMS scanning requests"
+            + " inbox access from Import History. Automatic capture is disabled.");
     secondary(
         content,
         "Allow Budget Notifications",
@@ -1599,6 +1601,51 @@ public class DevMainActivity extends MainActivity {
       progress.addView(new ProgressBar(this));
     }
     if (!importResult.isEmpty()) info("Last import", importResult);
+    LinearLayout sms = box(content);
+    text(sms, "Bank SMS history", 19).setTypeface(designFont, Typeface.BOLD);
+    caption(
+        sms,
+        "Scan HDFC Bank and Union Bank of India messages when you choose. Requires SMS inbox"
+            + " permission; automatic capture stays off.");
+    Spinner days =
+        picker(
+            sms,
+            "Scan range",
+            new String[] {"30 days", "90 days", "180 days", "All available"},
+            smsDays == 0 ? "All available" : smsDays + " days");
+    button(
+        sms,
+        "Scan SMS History",
+        () -> {
+          if (checkSelfPermission(Manifest.permission.READ_SMS)
+              != PackageManager.PERMISSION_GRANTED) {
+            new AlertDialog.Builder(this)
+                .setTitle("Allow manual SMS scanning?")
+                .setMessage(
+                    "SMS inbox permission grants access to messages on this device. The scan"
+                        + " filters supported HDFC/Union bank messages locally. Nothing is scanned"
+                        + " automatically. After granting access, tap Scan SMS History again.")
+                .setPositiveButton(
+                    "Continue",
+                    (d, w) -> requestPermissions(new String[] {Manifest.permission.READ_SMS}, 11))
+                .setNegativeButton("Cancel", null)
+                .show();
+            return;
+          }
+          smsDays = new int[] {30, 90, 180, 0}[days.getSelectedItemPosition()];
+          new AlertDialog.Builder(this)
+              .setTitle("Import supported bank SMS?")
+              .setMessage(
+                  "Scan "
+                      + (smsDays == 0
+                          ? "all available messages"
+                          : ("the past " + smsDays + " days"))
+                      + " on this device. Existing records are retained and duplicates are skipped."
+                      + " Unparsed supported messages go to Review Inbox.")
+              .setPositiveButton("Import", (d, w) -> scanSms())
+              .setNegativeButton("Cancel", null)
+              .show();
+        });
     LinearLayout files = box(content);
     text(files, "Import a file", 19).setTypeface(designFont, Typeface.BOLD);
     caption(
@@ -1988,6 +2035,82 @@ public class DevMainActivity extends MainActivity {
         });
   }
 
+  private void scanSms() {
+    if (busy) return;
+    busy = true;
+    busyStatus = "Scanning supported bank messages…";
+    render();
+    final long since = smsDays == 0 ? 0 : System.currentTimeMillis() - smsDays * 86400000L;
+    ExpenseApp.IO.execute(
+        () -> {
+          final int[] counts = {0, 0, 0};
+          Exception failure = null;
+          try {
+            repo.withCaptureBatch(
+                () -> {
+                  try (android.database.Cursor c =
+                      getContentResolver()
+                          .query(
+                              Uri.parse("content://sms/inbox"),
+                              new String[] {"address", "body", "date"},
+                              "date >= ? AND (body LIKE ? OR body LIKE ?)",
+                              new String[] {
+                                Long.toString(since), "%HDFC Bank%", "%Union Bank of India%"
+                              },
+                              "date ASC")) {
+                    if (c == null)
+                      throw new IllegalStateException("SMS provider unavailable. Please retry.");
+                    while (c.moveToNext()) {
+                      counts[0]++;
+                      try {
+                        if (repo.capture(
+                            c.getString(0),
+                            c.getString(1),
+                            "sms",
+                            c.getLong(2),
+                            "sms:" + c.getString(0) + ":" + c.getLong(2))) counts[1]++;
+                      } catch (IllegalArgumentException malformed) {
+                        counts[2]++;
+                      }
+                      if (counts[0] % 25 == 0) {
+                        final int scanned = counts[0];
+                        runOnUiThread(
+                            () -> {
+                              busyStatus = "Scanned " + scanned + " supported bank messages…";
+                              if (importProgress != null) importProgress.setText(busyStatus);
+                            });
+                      }
+                    }
+                  }
+                });
+          } catch (Exception e) {
+            failure = e;
+          }
+          final Exception problem = failure;
+          runOnUiThread(
+              () -> {
+                busy = false;
+                busyStatus = "";
+                importResult =
+                    "Scanned "
+                        + counts[0]
+                        + " supported bank messages · Added "
+                        + counts[1]
+                        + " records · Invalid messages "
+                        + counts[2]
+                        + ". Existing records retained; duplicates skipped. Unparsed supported"
+                        + " messages appear in Review.";
+                if (problem != null) {
+                  importResult +=
+                      " Scan stopped early; saved records retained. Check SMS access before"
+                          + " retrying.";
+                  error(problem);
+                }
+                reload();
+              });
+        });
+  }
+
   private void review() {
     message(
         "Local review inbox",
@@ -2123,8 +2246,9 @@ public class DevMainActivity extends MainActivity {
             + " encryption.");
     info(
         "Manual input and imports",
-        "This dev version has no SMS inbox permission, SMS receiver, or notification listener."
-            + " Existing records remain available. You choose the messages and files to import.");
+        "Manual SMS scans require SMS inbox access and only start after you tap Scan SMS History"
+            + " and confirm. This version has no SMS receiver or notification listener. Existing"
+            + " records remain available.");
     info(
         "Optional cloud sync",
         "Parsed transactions, budgets, and split records can sync to the configured authenticated"
@@ -2159,8 +2283,9 @@ public class DevMainActivity extends MainActivity {
             + getPackageName());
     info(
         "Sources",
-        "Manual transactions, pasted supported HDFC/Union bank messages, and supported CSV/JSON or"
-            + " Google Pay Takeout files. Automatic capture is unavailable in this dev version.");
+        "Manual transactions, user-triggered HDFC/Union SMS history scans, pasted messages, and"
+            + " supported CSV/JSON or Google Pay Takeout files. Automatic capture is unavailable in"
+            + " this dev version.");
     info(
         "Design",
         "Native Android implementation based on the approved Stitch reference. No web prototype or"

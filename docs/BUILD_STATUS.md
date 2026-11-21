@@ -1,3 +1,5 @@
+> Dev manual-scan restoration (2026-11-21): Scan SMS History is restored under Import History with 30/90/180-day and all-available ranges. It asks for READ_SMS only, explains inbox access, and requires a separate scan confirmation. Permission grant alone does not start a scan. Automatic SMS/GPay capture remains removed: no RECEIVE_SMS, SmsReceiver or NotificationCaptureService in the dev APK. The pipeline checks this distinction before publication. READ_SMS can still trigger the Play Protect installation restriction. No phone data was accessed or APK installed for this change.
+
 ## Dev capture removal — 2026-11-21
 
 Dev now excludes READ_SMS, RECEIVE_SMS, SmsReceiver and NotificationCaptureService through its manifest overlay. Capture consent, notification-listener setup and inbox scanning controls were removed from dev. Existing SMS/GPay source filters remain for previously stored records. Manual paste, file/Takeout imports, budgets, reports and optional sync remain available.
